@@ -14,31 +14,62 @@
 
 package main
 
+/*
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+typedef struct {
+	char* k;
+	char* v;
+} KV_return;
+
+extern KV_return** mallocKVStruct(int limit);
+extern void copyKVStruct(KV_return** kv_return, const char* k, const char* v, int index);
+extern void FreeKVStruct(KV_return** kv_return, int limit);
+extern char* getKVStructKey(KV_return** kv, int index);
+extern char* getKVStructVal(KV_return** kv, int index);
+extern char* getKeys(char** keys, int index);
+*/
+import "C"
 import (
 	"context"
 	"flag"
 	"fmt"
 	"os"
+	"unsafe"
+	//"reflect"
 
 	"github.com/tikv/client-go/v2/tikv"
 )
 
 // KV represents a Key-Value pair.
 type KV struct {
-	K, V []byte
+	K *C.char
+	V *C.char
 }
 
 func (kv KV) String() string {
-	return fmt.Sprintf("%s => %s (%v)", kv.K, kv.V, kv.V)
+	return fmt.Sprintf("%s => %s (%v)", C.GoString(kv.K), C.GoString(kv.V), kv.V)
 }
 
 var (
 	client *tikv.KVStore
-	pdAddr = flag.String("pd", "127.0.0.1:2379", "pd address")
+	pdAddr = flag.String("pd", "10.4.128.29:2379", "pd address")
 )
 
+func initOS() {
+	pdAddr := os.Getenv("PD_ADDR")
+        if pdAddr != "" {
+                os.Args = append(os.Args, "-pd", pdAddr)
+        }
+        flag.Parse()
+}
+
 // Init initializes information.
+//export initStore
 func initStore() {
+	initOS()
 	var err error
 	client, err = tikv.NewTxnClient([]string{*pdAddr})
 	if err != nil {
@@ -47,100 +78,215 @@ func initStore() {
 }
 
 // key1 val1 key2 val2 ...
-func puts(args ...[]byte) error {
+//export putsKV
+func putsKV(key string, value string) int {
+	fmt.Println("putsKV!")
+	tx, err := client.Begin()
+        if err != nil {
+                return -1
+        }
+	err = tx.Set([]byte(key), []byte(value))
+	if err != nil {
+                return -1
+        }
+	err = tx.Commit(context.Background())
+        if err != nil {
+		return -1
+	}
+	return 0
+}
+
+//export putsKVMap
+func putsKVMap(kv **C.KV_return, size int) int {
+	fmt.Println("putsKVMap!")
 	tx, err := client.Begin()
 	if err != nil {
-		return err
+		fmt.Println("Begin Error!")
+		return -1
 	}
 
-	for i := 0; i < len(args); i += 2 {
-		key, val := args[i], args[i+1]
-		err := tx.Set(key, val)
+	for i := 0; i < size; i++ {
+		k := C.getKVStructKey(kv, C.int(i))
+		v := C.getKVStructVal(kv, C.int(i))
+		key, val := []byte(C.GoString(k)), []byte(C.GoString(v))
+		fmt.Println("key:", C.GoString(k))
+		fmt.Println("val:", C.GoString(v))
+		err = tx.Set([]byte(key), []byte(val))
 		if err != nil {
-			return err
-		}
+			fmt.Println("Set Error!")
+			return -1
+		} 
 	}
-	return tx.Commit(context.Background())
+	
+	err = tx.Commit(context.Background())
+	if err != nil {
+		fmt.Println("Commit Error!")
+		return -1
+	}
+	return 0
 }
 
-func get(k []byte) (KV, error) {
+//export getKV
+func getKV(k string) (value *C.char, e int) {
+	//var m map[string]string
 	tx, err := client.Begin()
 	if err != nil {
-		return KV{}, err
+		e = -1
+		fmt.Println("tx failed!")
+		return value, e
 	}
-	v, err := tx.Get(context.TODO(), k)
+	v, err := tx.Get(context.TODO(), []byte(k))
 	if err != nil {
-		return KV{}, err
+		e = -1
+		fmt.Println("Get %s failed!", k)
+		return value, e
 	}
-	return KV{K: k, V: v}, nil
+	
+	value = (*C.char)(unsafe.Pointer(C.CBytes(v)))
+	fmt.Println("Get success! v: ", k, string(v))
+	return value, 0
 }
 
-func dels(keys ...[]byte) error {
+//export freeCBytes
+func freeCBytes(ptr *C.char) {
+	C.free(unsafe.Pointer(ptr))
+}
+
+//export delKey
+func delKey(key string) (e int) {
+        tx, err := client.Begin()
+        if err != nil {
+		e = -1
+                return e
+        }
+
+	err = tx.Delete([]byte(key))
+	if err != nil {
+		e = -1
+		return e
+	}
+         
+	tx.Commit(context.Background())
+	return 0
+}
+
+//export delKeys
+func delKeys(keys **C.char, size int) (e int) {
 	tx, err := client.Begin()
 	if err != nil {
-		return err
+		e = -1
+		return e
 	}
-	for _, key := range keys {
-		err := tx.Delete(key)
+	
+	for i := 0; i < size; i++ {
+		key := C.getKeys(keys, C.int(i))
+		err = tx.Delete([]byte(C.GoString(key)))
 		if err != nil {
-			return err
-		}
+                	e = -1
+                	return e
+        	}
 	}
-	return tx.Commit(context.Background())
+ 
+	tx.Commit(context.Background())
+	return 0
 }
 
-func scan(keyPrefix []byte, limit int) ([]KV, error) {
+//export scanKV
+func scanKV(keyPrefix string, limit int) (ret **C.KV_return, e int) {
+	fmt.Println("Go scanKV IN!")
 	tx, err := client.Begin()
 	if err != nil {
-		return nil, err
+		e = -1
+		return nil, e
 	}
-	it, err := tx.Iter(keyPrefix, nil)
+	it, err := tx.Iter([]byte(keyPrefix), nil)
 	if err != nil {
-		return nil, err
+		e = -1
+		return nil, e
 	}
 	defer it.Close()
-	var ret []KV
+	
+	//p := C.malloc(C.size_t(10000))
+	//defer C.free(p) 
+
+	// make a slice for convenient indexing
+	//ret = ([]KV)(ret)[:limit:limit]
+	//ret = make([]KV, 10)
+	ret = C.mallocKVStruct(C.int(limit))
+	i := 0
 	for it.Valid() && limit > 0 {
-		ret = append(ret, KV{K: it.Key()[:], V: it.Value()[:]})
+		tk := C.CString(string(it.Key()))
+		tv := C.CString(string(it.Value()))
+		defer C.free(unsafe.Pointer(tk))
+		defer C.free(unsafe.Pointer(tv))
+		fmt.Println(C.GoString(tk))
+		fmt.Println(C.GoString(tv))
+		C.copyKVStruct(ret, (*C.char)(tk), (*C.char)(tv), C.int(i))
 		limit--
+		i++
 		it.Next()
-	}
-	return ret, nil
+	} 
+	return ret, 0
+}
+
+//export FreeKV
+func FreeKV(ret **C.KV_return, limit int) {
+	C.FreeKVStruct(ret, C.int(limit))
 }
 
 func main() {
-	pdAddr := os.Getenv("PD_ADDR")
+	/*pdAddr := os.Getenv("PD_ADDR")
 	if pdAddr != "" {
 		os.Args = append(os.Args, "-pd", pdAddr)
 	}
-	flag.Parse()
+	flag.Parse()*/
 	initStore()
 
 	// set
-	err := puts([]byte("key1"), []byte("value1"), []byte("key2"), []byte("value2"))
-	if err != nil {
-		panic(err)
+	//err := puts([]byte("key1"), []byte("value1"), []byte("key2"), []byte("value2"))
+	errno := putsKV("key1", "value1")
+	if errno != 0 {
+		fmt.Println("input err!")
 	}
+	errno = putsKV("key2", "value2")
+	if errno != 0 {
+		fmt.Println("input err!")
+	}
+
+	var m map[string]string
+	m = make(map[string]string)
+	m["key3"] = "value3"
+	m["key4"] = "value4"
+	/*errno = putsKVMap(m)
+	if errno != 0 {
+                fmt.Println("input err!")
+        }*/
+	fmt.Println("Input 3/4 success!")
 
 	// get
-	kv, err := get([]byte("key1"))
-	if err != nil {
-		panic(err)
+	val, errno := getKV("key1")
+	if errno != 0 {
+		fmt.Println("Get err!")
 	}
-	fmt.Println(kv)
-
+	fmt.Println("key1 ", C.GoString(val))
+	fmt.Println("Get success!")
 	// scan
-	ret, err := scan([]byte("key"), 10)
-	if err != nil {
-		panic(err)
+	var ret **C.KV_return
+	//ret := make([]KV, 10)
+	ret, errno = scanKV("key", 10)
+	if errno != 0 {
+		fmt.Println("Scan err!")
 	}
-	for _, kv := range ret {
-		fmt.Println(kv)
-	}
+	/*for k, v := range ret {
+		fmt.Println(k)
+		fmt.Println(v)
+	}*/
 
+	FreeKV(ret, 10)
+	fmt.Println("over!")
 	// delete
-	err = dels([]byte("key1"), []byte("key2"))
+	/*err := dels([]byte("key1"), []byte("key2"))
 	if err != nil {
 		panic(err)
-	}
+	}*/
 }
