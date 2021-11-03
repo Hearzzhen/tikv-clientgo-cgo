@@ -55,7 +55,7 @@ func (kv KV) String() string {
 
 var (
 	client *tikv.KVStore
-	pdAddr = flag.String("pd", "10.1.172.118:2379", "pd address")
+	//pdAddr = flag.String("pd", "10.1.172.118:2379", "pd address")
 )
 
 func initOS() {
@@ -68,10 +68,11 @@ func initOS() {
 
 // Init initializes information.
 //export initStore
-func initStore() {
+func initStore(ip_address string) {
 	initOS()
 	var err error
-	client, err = tikv.NewTxnClient([]string{*pdAddr})
+	//client, err = tikv.NewTxnClient([]string{*pdAddr})
+	client, err = tikv.NewTxnClient([]string{ip_address})
 	if err != nil {
 		panic(err)
 	}
@@ -240,7 +241,7 @@ func main() {
 		os.Args = append(os.Args, "-pd", pdAddr)
 	}
 	flag.Parse()*/
-	initStore()
+	initStore("10.1.172.118:2379")
 
 	// set
 	//err := puts([]byte("key1"), []byte("value1"), []byte("key2"), []byte("value2"))

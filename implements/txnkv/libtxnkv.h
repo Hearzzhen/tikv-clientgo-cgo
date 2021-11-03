@@ -89,7 +89,7 @@ extern "C" {
 
 
 // Init initializes information.
-extern void initStore();
+extern void initStore(GoString ip_address);
 
 // key1 val1 key2 val2 ...
 extern GoInt putsKV(GoString key, GoString value);
