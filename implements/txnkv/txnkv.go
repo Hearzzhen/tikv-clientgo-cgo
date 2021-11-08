@@ -35,6 +35,7 @@ import "C"
 import (
 	"context"
 	"flag"
+	"log"
 	"fmt"
 	"os"
 	"unsafe"
@@ -59,11 +60,22 @@ var (
 )
 
 func initOS() {
+	logFile, err := os.OpenFile("/var/log/ceph/txnkv.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+    if err != nil {
+		fmt.Println("open log file failed, err:", err)
+		return
+	}
+	log.SetOutput(logFile)
+	log.SetPrefix("[txnkv]")
+	log.SetFlags(log.Lshortfile |log.Lmicroseconds | log.Ldate)
+
+	log.Println("initOS")
 	pdAddr := os.Getenv("PD_ADDR")
         if pdAddr != "" {
                 os.Args = append(os.Args, "-pd", pdAddr)
         }
         flag.Parse()
+	log.Println("initOS done!")
 }
 
 // Init initializes information.
@@ -76,6 +88,7 @@ func initStore(ip_address string) {
 	if err != nil {
 		panic(err)
 	}
+	log.Println("initStore done!")
 }
 
 // key1 val1 key2 val2 ...
