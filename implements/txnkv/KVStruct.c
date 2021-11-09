@@ -1,5 +1,15 @@
 #include "_cgo_export.h"
 
+char* mallocChar(int size) {
+	char* str = (char*)malloc(sizeof(char) * size);
+	memset(str, 0, sizeof(char) * size);
+	return str;
+}
+
+void copyChar(char* str, const char* v) {
+	memcpy(str, v, strlen(v));
+}
+
 KV_return** mallocKVStruct(int limit) {
         KV_return** result = (KV_return**)malloc(sizeof(KV_return*) * limit);
         int i;

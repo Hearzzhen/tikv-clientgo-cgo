@@ -24,6 +24,8 @@ typedef struct {
 	char* v;
 } KV_return;
 
+extern char* mallocChar(int size);
+extern void copyChar(char* str, const char* v);
 extern KV_return** mallocKVStruct(int limit);
 extern void copyKVStruct(KV_return** kv_return, const char* k, const char* v, int index);
 extern void FreeKVStruct(KV_return** kv_return, int limit);
@@ -142,7 +144,7 @@ func putsKVMap(kv **C.KV_return, size int) int {
 
 //export getKV
 func getKV(k string) (value *C.char, e int) {
-	//var m map[string]string
+	value = C.mallocChar(102400);
 	tx, err := client.Begin()
 	if err != nil {
 		e = -1
@@ -156,8 +158,9 @@ func getKV(k string) (value *C.char, e int) {
 		return value, e
 	}
 	
-	value = (*C.char)(unsafe.Pointer(C.CBytes(v)))
-	fmt.Println("Get success! v: ", k, string(v))
+	//value = (*C.char)(unsafe.Pointer(C.CBytes(v)))
+	C.copyChar(value, (*C.char)(unsafe.Pointer(C.CBytes(v))))
+	log.Println("Get success! v: ", k, string(v))
 	return value, 0
 }
 
@@ -207,7 +210,7 @@ func delKeys(keys **C.char, size int) (e int) {
 
 //export scanKV
 func scanKV(keyPrefix string, limit int) (ret **C.KV_return, e int) {
-	fmt.Println("Go scanKV IN!")
+	log.Println("Go scanKV IN!")
 	tx, err := client.Begin()
 	if err != nil {
 		e = -1
@@ -233,8 +236,8 @@ func scanKV(keyPrefix string, limit int) (ret **C.KV_return, e int) {
 		tv := C.CString(string(it.Value()))
 		defer C.free(unsafe.Pointer(tk))
 		defer C.free(unsafe.Pointer(tv))
-		fmt.Println(C.GoString(tk))
-		fmt.Println(C.GoString(tv))
+		log.Println(C.GoString(tk))
+		log.Println(C.GoString(tv))
 		C.copyKVStruct(ret, (*C.char)(tk), (*C.char)(tv), C.int(i))
 		limit--
 		i++

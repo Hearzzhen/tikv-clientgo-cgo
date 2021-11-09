@@ -30,6 +30,8 @@ typedef struct {
 	char* v;
 } KV_return;
 
+extern char* mallocChar(int size);
+extern void copyChar(char* str, const char* v);
 extern KV_return** mallocKVStruct(int limit);
 extern void copyKVStruct(KV_return** kv_return, const char* k, const char* v, int index);
 extern void FreeKVStruct(KV_return** kv_return, int limit);
