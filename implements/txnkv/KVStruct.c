@@ -1,13 +1,13 @@
 #include "_cgo_export.h"
 
-char* mallocChar(int size) {
-	char* str = (char*)malloc(sizeof(char) * size);
-	memset(str, 0, sizeof(char) * size);
+unsigned char* mallocUChar(int size) {
+	unsigned char* str = (unsigned char*)malloc(sizeof(unsigned char) * size);
+	memset(str, 0, sizeof(unsigned char) * size);
 	return str;
 }
 
-void copyChar(char* str, const char* v) {
-	memcpy(str, v, strlen(v));
+void copyUChar(unsigned char* str, unsigned char* v, int len) {
+	memcpy(str, v, len);
 }
 
 KV_return** mallocKVStruct(int limit) {

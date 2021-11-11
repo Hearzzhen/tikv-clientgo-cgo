@@ -30,8 +30,8 @@ typedef struct {
 	char* v;
 } KV_return;
 
-extern char* mallocChar(int size);
-extern void copyChar(char* str, const char* v);
+extern unsigned char* mallocUChar(int size);
+extern void copyUChar(unsigned char* str, unsigned char* v, int len);
 extern KV_return** mallocKVStruct(int limit);
 extern void copyKVStruct(KV_return** kv_return, const char* k, const char* v, int index);
 extern void FreeKVStruct(KV_return** kv_return, int limit);
@@ -99,8 +99,9 @@ extern GoInt putsKVMap(KV_return** kv, GoInt size);
 
 /* Return type for getKV */
 struct getKV_return {
-	char* r0; /* value */
-	GoInt r1; /* e */
+	unsigned char* r0; /* value */
+	GoInt r1; /* length */
+	GoInt r2; /* e */
 };
 extern struct getKV_return getKV(GoString k);
 extern void freeCBytes(char* ptr);

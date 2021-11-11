@@ -24,8 +24,8 @@ typedef struct {
 	char* v;
 } KV_return;
 
-extern char* mallocChar(int size);
-extern void copyChar(char* str, const char* v);
+extern unsigned char* mallocUChar(int size);
+extern void copyUChar(unsigned char* str, unsigned char* v, int len);
 extern KV_return** mallocKVStruct(int limit);
 extern void copyKVStruct(KV_return** kv_return, const char* k, const char* v, int index);
 extern void FreeKVStruct(KV_return** kv_return, int limit);
@@ -36,7 +36,7 @@ extern char* getKeys(char** keys, int index);
 import "C"
 import (
 	"context"
-	"flag"
+	//"flag"
 	"log"
 	"fmt"
 	"os"
@@ -76,7 +76,7 @@ func initOS() {
         if pdAddr != "" {
                 os.Args = append(os.Args, "-pd", pdAddr)
         }
-        flag.Parse()
+    //    flag.Parse()
 	log.Println("initOS done!")
 }
 
@@ -143,25 +143,26 @@ func putsKVMap(kv **C.KV_return, size int) int {
 }
 
 //export getKV
-func getKV(k string) (value *C.char, e int) {
-	value = C.mallocChar(102400);
+func getKV(k string) (value *C.uchar, length int, e int) {
+	//value = C.mallocUChar(102400);
 	tx, err := client.Begin()
 	if err != nil {
 		e = -1
 		fmt.Println("tx failed!")
-		return value, e
+		return value, 0, e
 	}
 	v, err := tx.Get(context.TODO(), []byte(k))
 	if err != nil {
 		e = -1
 		fmt.Println("Get %s failed!", k)
-		return value, e
+		return value, 0, e
 	}
 	
-	//value = (*C.char)(unsafe.Pointer(C.CBytes(v)))
-	C.copyChar(value, (*C.char)(unsafe.Pointer(C.CBytes(v))))
-	log.Println("Get success! v: ", k, string(v))
-	return value, 0
+	value = (*C.uchar)(unsafe.Pointer(C.CBytes(v)))
+	//C.copyChar(value, (*C.char)((C.CString(string(v)))))
+	//C.copyUChar(value, (*C.uchar)(unsafe.Pointer(C.CBytes)(v)), (C.int)(len(v)))
+	log.Println("Get success! v: ", k, string(v), v)
+	return value, len(v), 0
 }
 
 //export freeCBytes
@@ -281,12 +282,12 @@ func main() {
 	fmt.Println("Input 3/4 success!")
 
 	// get
-	val, errno := getKV("key1")
-	if errno != 0 {
-		fmt.Println("Get err!")
-	}
-	fmt.Println("key1 ", C.GoString(val))
-	fmt.Println("Get success!")
+	//val, errno := getKV("key1")
+	//if errno != 0 {
+//		fmt.Println("Get err!")
+//	}
+//	fmt.Println("key1 ", C.GoString(val))
+//	fmt.Println("Get success!")
 	// scan
 	var ret **C.KV_return
 	//ret := make([]KV, 10)
