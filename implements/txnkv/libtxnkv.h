@@ -26,14 +26,16 @@ typedef struct { const char *p; ptrdiff_t n; } _GoString_;
 #include <string.h>
 
 typedef struct {
-	char* k;
-	char* v;
+	unsigned char* k;
+	unsigned char* v;
+	int klen;
+	int vlen;
 } KV_return;
 
 extern unsigned char* mallocUChar(int size);
 extern void copyUChar(unsigned char* str, unsigned char* v, int len);
 extern KV_return** mallocKVStruct(int limit);
-extern void copyKVStruct(KV_return** kv_return, const char* k, const char* v, int index);
+extern void copyKVStruct(KV_return** kv_return, const unsigned char* k, const unsigned char* v, int index, int klen, int vlen);
 extern void FreeKVStruct(KV_return** kv_return, int limit);
 extern char* getKVStructKey(KV_return** kv, int index);
 extern char* getKVStructVal(KV_return** kv, int index);

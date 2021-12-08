@@ -14,20 +14,21 @@ KV_return** mallocKVStruct(int limit) {
         KV_return** result = (KV_return**)malloc(sizeof(KV_return*) * limit);
         int i;
         for (i = 0; i < limit; ++i) {
-                result[i] = (KV_return*)malloc(sizeof(KV_return));
-                result[i]->k = (char*)malloc(sizeof(char) * 1024);
-                result[i]->v = (char*)malloc(sizeof(char) * 102400);
-		memset(result[i]->k, 0, sizeof(char) * 1024);
-		memset(result[i]->v, 0, sizeof(char) * 102400);
+            result[i] = (KV_return*)malloc(sizeof(KV_return));
+            result[i]->k = (unsigned char*)malloc(sizeof(unsigned char) * 1024);
+            result[i]->v = (unsigned char*)malloc(sizeof(unsigned char) * 102400);
+			memset(result[i]->k, 0, sizeof(unsigned char) * 1024);
+			memset(result[i]->v, 0, sizeof(unsigned char) * 102400);
         }
         return result;
 }
 
-void copyKVStruct(KV_return** kv_return, const char* k, const char* v, int index) {
-	printf("XXXXXX: k: %s v: %s\n", k, v);
-        memcpy(kv_return[index]->k, k, strlen(k));
-        memcpy(kv_return[index]->v, v, strlen(v));
-	printf("XXXXXX: kv_return->k: %s kv_return->v: %s\n", kv_return[index]->k, kv_return[index]->v);
+void copyKVStruct(KV_return** kv_return, const unsigned char* k, const unsigned char* v, int index, int klen, int vlen) {
+    memcpy(kv_return[index]->k, k, klen);
+    memcpy(kv_return[index]->v, v, vlen);
+	kv_return[index]->klen = klen;
+	kv_return[index]->vlen = vlen;
+	//printf("XXXXXX: kv_return->k: %s kv_return->v: %s\n", kv_return[index]->k, kv_return[index]->v);
 }
 
 void FreeKVStruct(KV_return** kv_return, int limit){

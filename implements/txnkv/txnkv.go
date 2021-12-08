@@ -20,14 +20,16 @@ package main
 #include <string.h>
 
 typedef struct {
-	char* k;
-	char* v;
+	unsigned char* k;
+	unsigned char* v;
+	int klen;
+	int vlen;
 } KV_return;
 
 extern unsigned char* mallocUChar(int size);
 extern void copyUChar(unsigned char* str, unsigned char* v, int len);
 extern KV_return** mallocKVStruct(int limit);
-extern void copyKVStruct(KV_return** kv_return, const char* k, const char* v, int index);
+extern void copyKVStruct(KV_return** kv_return, const unsigned char* k, const unsigned char* v, int index, int klen, int vlen);
 extern void FreeKVStruct(KV_return** kv_return, int limit);
 extern char* getKVStructKey(KV_return** kv, int index);
 extern char* getKVStructVal(KV_return** kv, int index);
@@ -172,11 +174,11 @@ func freeCBytes(ptr *C.char) {
 
 //export delKey
 func delKey(key string) (e int) {
-        tx, err := client.Begin()
-        if err != nil {
-		e = -1
-                return e
-        }
+    tx, err := client.Begin()
+    if err != nil {
+	e = -1
+        return e
+    }
 
 	err = tx.Delete([]byte(key))
 	if err != nil {
@@ -199,10 +201,11 @@ func delKeys(keys **C.char, size int) (e int) {
 	for i := 0; i < size; i++ {
 		key := C.getKeys(keys, C.int(i))
 		err = tx.Delete([]byte(C.GoString(key)))
+		log.Println("Del Key: ", string(C.GoString(key)))
 		if err != nil {
-                	e = -1
-                	return e
-        	}
+            e = -1
+            return e
+        }
 	}
  
 	tx.Commit(context.Background())
@@ -233,17 +236,15 @@ func scanKV(keyPrefix string, limit int) (ret **C.KV_return, e int) {
 	ret = C.mallocKVStruct(C.int(limit))
 	i := 0
 	for it.Valid() && limit > 0 {
-		tk := C.CString(string(it.Key()))
-		tv := C.CString(string(it.Value()))
+		tk := (*C.uchar)(unsafe.Pointer(C.CBytes(it.Key())))
+		tv := (*C.uchar)(unsafe.Pointer(C.CBytes(it.Value())))
 		defer C.free(unsafe.Pointer(tk))
 		defer C.free(unsafe.Pointer(tv))
-		log.Println(C.GoString(tk))
-		log.Println(C.GoString(tv))
-		C.copyKVStruct(ret, (*C.char)(tk), (*C.char)(tv), C.int(i))
+		C.copyKVStruct(ret, tk, tv, C.int(i), C.int(len(it.Key())), C.int(len(it.Value())))
 		limit--
 		i++
 		it.Next()
-	} 
+	}
 	return ret, 0
 }
 
