@@ -113,7 +113,8 @@ extern GoInt delKeys(char** keys, GoInt size);
 /* Return type for scanKV */
 struct scanKV_return {
 	KV_return** r0; /* ret */
-	GoInt r1; /* e */
+	GoInt r1; /* count */
+	GoInt r2; /* e */
 };
 extern struct scanKV_return scanKV(GoString keyPrefix, GoInt limit);
 extern void FreeKV(KV_return** ret, GoInt limit);

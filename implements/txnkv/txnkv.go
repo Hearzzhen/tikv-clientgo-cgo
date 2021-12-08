@@ -213,17 +213,17 @@ func delKeys(keys **C.char, size int) (e int) {
 }
 
 //export scanKV
-func scanKV(keyPrefix string, limit int) (ret **C.KV_return, e int) {
+func scanKV(keyPrefix string, limit int) (ret **C.KV_return, count int, e int) {
 	log.Println("Go scanKV IN!")
 	tx, err := client.Begin()
 	if err != nil {
 		e = -1
-		return nil, e
+		return nil, 0, e
 	}
 	it, err := tx.Iter([]byte(keyPrefix), nil)
 	if err != nil {
 		e = -1
-		return nil, e
+		return nil, 0, e
 	}
 	defer it.Close()
 	
@@ -245,7 +245,7 @@ func scanKV(keyPrefix string, limit int) (ret **C.KV_return, e int) {
 		i++
 		it.Next()
 	}
-	return ret, 0
+	return ret, i, 0
 }
 
 //export FreeKV
@@ -254,11 +254,12 @@ func FreeKV(ret **C.KV_return, limit int) {
 }
 
 func main() {
-	/*pdAddr := os.Getenv("PD_ADDR")
-	if pdAddr != "" {
-		os.Args = append(os.Args, "-pd", pdAddr)
-	}
-	flag.Parse()*/
+	/*
+	//pdAddr := os.Getenv("PD_ADDR")
+	//if pdAddr != "" {
+	//	os.Args = append(os.Args, "-pd", pdAddr)
+	//}
+	//flag.Parse()
 	initStore("10.1.172.118:2379")
 
 	// set
@@ -276,10 +277,10 @@ func main() {
 	m = make(map[string]string)
 	m["key3"] = "value3"
 	m["key4"] = "value4"
-	/*errno = putsKVMap(m)
-	if errno != 0 {
-                fmt.Println("input err!")
-        }*/
+	//errno = putsKVMap(m)
+	//if errno != 0 {
+    //            fmt.Println("input err!")
+    //    }
 	fmt.Println("Input 3/4 success!")
 
 	// get
@@ -296,16 +297,17 @@ func main() {
 	if errno != 0 {
 		fmt.Println("Scan err!")
 	}
-	/*for k, v := range ret {
-		fmt.Println(k)
-		fmt.Println(v)
-	}*/
+	//for k, v := range ret {
+	//	fmt.Println(k)
+	//	fmt.Println(v)
+	//}
 
 	FreeKV(ret, 10)
 	fmt.Println("over!")
 	// delete
-	/*err := dels([]byte("key1"), []byte("key2"))
-	if err != nil {
-		panic(err)
-	}*/
+	//err := dels([]byte("key1"), []byte("key2"))
+	//if err != nil {
+	//	panic(err)
+	//}
+	*/
 }
