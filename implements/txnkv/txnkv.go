@@ -26,6 +26,11 @@ typedef struct {
 	int vlen;
 } KV_return;
 
+typedef struct {
+	_GoString_ k;
+	_GoString_ v;
+} KV_set;
+
 extern unsigned char* mallocUChar(int size);
 extern void copyUChar(unsigned char* str, unsigned char* v, int len);
 extern KV_return** mallocKVStruct(int limit);
@@ -33,6 +38,8 @@ extern void copyKVStruct(KV_return** kv_return, const unsigned char* k, const un
 extern void FreeKVStruct(KV_return** kv_return, int limit);
 extern char* getKVStructKey(KV_return** kv, int index);
 extern char* getKVStructVal(KV_return** kv, int index);
+extern _GoString_ getKVSetKey(KV_set* kv, int index);
+extern _GoString_ getKVSetVal(KV_set* kv, int index);
 extern char* getKeys(char** keys, int index);
 */
 import "C"
@@ -115,32 +122,32 @@ func putsKV(key string, value string) int {
 }
 
 //export putsKVMap
-func putsKVMap(kv **C.KV_return, size int) int {
-	fmt.Println("putsKVMap!")
+func putsKVMap(kv *C.KV_set, size int) int {
+	log.Println("putsKVMap!")
 	tx, err := client.Begin()
 	if err != nil {
-		fmt.Println("Begin Error!")
+		log.Println("Begin Error!")
 		return -1
 	}
 
 	for i := 0; i < size; i++ {
-		k := C.getKVStructKey(kv, C.int(i))
-		v := C.getKVStructVal(kv, C.int(i))
-		key, val := []byte(C.GoString(k)), []byte(C.GoString(v))
-		fmt.Println("key:", C.GoString(k))
-		fmt.Println("val:", C.GoString(v))
-		err = tx.Set([]byte(key), []byte(val))
+		k := C.getKVSetKey(kv, C.int(i))
+		v := C.getKVSetVal(kv, C.int(i))
+		log.Println("key:", k)
+		log.Println("val:", v)
+		err = tx.Set([]byte(k), []byte(v))
 		if err != nil {
-			fmt.Println("Set Error!")
+			log.Println("Commit Error!")
 			return -1
-		} 
+		}
 	}
-	
+
 	err = tx.Commit(context.Background())
 	if err != nil {
-		fmt.Println("Commit Error!")
+		log.Println("Commit Error!")
 		return -1
 	}
+
 	return 0
 }
 

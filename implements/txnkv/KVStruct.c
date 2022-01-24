@@ -57,6 +57,14 @@ char* getKVStructVal(KV_return** kv, int index) {
 	return kv[index]->v;
 }
 
+_GoString_ getKVSetKey(KV_set* kv, int index) {
+	return kv[index].k;
+}
+
+_GoString_ getKVSetVal(KV_set* kv, int index) {
+	return kv[index].v;
+}
+
 char* getKeys(char** keys, int index) {
 	return keys[index];
 }
